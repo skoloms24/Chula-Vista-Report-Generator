@@ -29,7 +29,7 @@
     </p>
   </div>
 
-  <!-- 🧭 Runtime error / rejection catcher -->
+  <!-- Error catchers so we never see a blank screen -->
   <script>
   window.addEventListener("error", e => {
     document.body.innerHTML =
@@ -45,7 +45,6 @@
   });
   </script>
 
-  <!-- 🚀 Main logic -->
   <script>
   (async () => {
     const el = document.getElementById('status');
@@ -75,7 +74,7 @@
         if (Z) return { Z, how: 'cdn-v1' };
       } catch(e) { /* ignore */ }
       try {
-        await loadScript('https://live.zwidgets.com/js-sdk/1.3/ZohoEmbededAppSDK.min.js', 'sdk-1.3');
+        await loadScript('https://live.zwidgets.com/js-sdk/1.3/ZohoEmbededAppSDK.min.js', 'cdn-1.3');
         Z = getZoho();
         if (Z) return { Z, how: 'cdn-1.3' };
       } catch(e) { /* ignore */ }
@@ -91,14 +90,23 @@
       }
       await Z.embeddedApp.init();
       set('ok', '✅ SDK OK — source: ' + how);
-      document.getElementById('test').onclick = async () => {
+
+      // Bind test button (uses ORG namespace; falls back to API if present)
+      document.getElementById('test')?.addEventListener('click', async () => {
         try {
-          const info = await Z.CRM.API.getOrgInfo();
-          alert('Org OK: ' + (info?.org?.[0]?.company_name || 'response received'));
-        } catch(e) {
+          if (Z?.CRM?.ORG?.getOrgInfo) {
+            const info = await Z.CRM.ORG.getOrgInfo();
+            alert('Org OK: ' + (info?.org?.[0]?.company_name || JSON.stringify(info)));
+          } else if (Z?.CRM?.API?.getOrgInfo) {
+            const info = await Z.CRM.API.getOrgInfo();
+            alert('Org OK: ' + (info?.org?.[0]?.company_name || JSON.stringify(info)));
+          } else {
+            alert('API failed: getOrgInfo not available on this SDK build.');
+          }
+        } catch (e) {
           alert('API failed: ' + (e && e.message ? e.message : e));
         }
-      };
+      });
     } catch(e) {
       set('warn', 'SDK init failed: ' + (e && e.message ? e.message : e));
     }
